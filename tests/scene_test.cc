@@ -14,11 +14,11 @@
 using namespace render;
 
 TEST(SceneTest, RenderDepth) {
-  auto depth_rgb = [](const Scene &scene, const Intersection &intersection, Vec3 *rgb) {
+  auto depth_rgb = [](const World &scene, const Intersection &intersection, Vec3 *rgb) {
     rgb->setZero();
     (*rgb)[0] = intersection.t();
   };
-  auto normal_rgb = [](const Scene &scene, const Intersection &intersection, Vec3 *rgb) {
+  auto normal_rgb = [](const World &scene, const Intersection &intersection, Vec3 *rgb) {
     rgb->setZero();
     *rgb = intersection.normal();
   };

@@ -36,7 +36,7 @@ class Renderer {
   // primary ray. The renderer will take the average of those values to determine the final color of the pixel.
   void RenderScene(std::shared_ptr<World> world,
                    std::shared_ptr<Camera> camera,
-                   std::function<void(const Scene &, const Intersection &, Vec3 *rgb_out)> primary_ray_handler,
+                   std::function<void(const World &, const Intersection &, Vec3 *rgb_out)> primary_ray_handler,
                    cv::Mat *image) {
     *image = cv::Mat(cv::Size(viewport_->w(), viewport_->h()), CV_64FC4, cv::Scalar(0.0, 0.0, 0.0, 1.0));
 
@@ -62,7 +62,7 @@ class Renderer {
           bool hit = scene.IntersectRay(ray, &intersection);
           if (hit) {
             Vec3 rgb_sample;
-            primary_ray_handler(scene, intersection, &rgb_sample);
+            primary_ray_handler(*world, intersection, &rgb_sample);
             rgb += rgb_sample;
             hit_count++;
           }
