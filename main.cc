@@ -23,7 +23,6 @@ using namespace render;
 
 int main() {
   Eigen::initParallel();
-  auto start = MilliSecondsSinceEpoch();
 
   auto viewport = std::make_shared<Viewport>(512, 512);
 
@@ -43,8 +42,9 @@ int main() {
       }
   ));
 
+  auto start = MilliSecondsSinceEpoch();
+
   cv::Mat image;
-//  Render(scene, viewport, depth_rgb, &image);
   Renderer renderer(viewport);
   renderer.UseMultiJitteredSampling(12);
 
@@ -58,15 +58,14 @@ int main() {
   auto camera = std::shared_ptr<OrthographicCamera>(new OrthographicCamera({0, 0, -1}, {0, 0, 0}, {0, -1, 0}, frustum));
   renderer.RenderScene(world, camera, depth_rgb, &image);
 
+  auto end = MilliSecondsSinceEpoch();
+  std::cout << "Time elapsed: " << end - start << " ms" << std::endl;
+
   std::string outfile = "/home/daeyun/Dropbox/git/cs419_cpp/out/1.png";
   SavePng(outfile, image);
 
   std::string outfile2 = "/home/daeyun/Dropbox/git/cs419_cpp/out/1.bin";
   SerializeRgba(outfile2, image);
-
-  auto end = MilliSecondsSinceEpoch();
-
-  std::cout << "Time elapsed: " << end - start << " ms" << std::endl;
 
   start = MilliSecondsSinceEpoch();
   auto sampler = HemisphereSampler(10.0);
