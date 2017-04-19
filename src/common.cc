@@ -4,5 +4,3 @@
 
 #include "common.h"
 
-double infinity = std::numeric_limits<double>::infinity();
-

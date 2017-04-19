@@ -21,7 +21,7 @@ class Scene : public Object {
   virtual bool IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const override {
     Intersection current_intersection(ray);
     Intersection closest_intersection(ray);
-    closest_intersection.set_t(infinity);
+    closest_intersection.set_t(kInfinity);
     bool intersects = false;
     for (const auto &object : objects_) {
       if (object->IntersectRay(ray, &current_intersection)) {

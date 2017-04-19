@@ -57,7 +57,7 @@ void SerializeRgba(const std::string &filename, const cv::Mat &image) {
   num = static_cast<int32_t>(4);
   file.write(reinterpret_cast<const char *>(&num), sizeof(num));
 
-  for (int i = 0; i < image_float.total(); ++i) {
+  for (size_t i = 0; i < image_float.total(); ++i) {
     auto &pixel = image_float.at<cv::Vec4f>(i);
     file.write(reinterpret_cast<const char *>(pixel.val), sizeof(pixel.val));
   }

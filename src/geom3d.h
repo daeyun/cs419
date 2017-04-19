@@ -86,9 +86,16 @@ class BoundingBox {
 
 class Intersection {
  public:
-  Intersection(std::shared_ptr<Ray> ray) : ray_(ray) {}
+  Intersection(std::shared_ptr<Ray> ray) : ray_(std::move(ray)) {}
 
-  Intersection(std::shared_ptr<Ray> ray, double t, const Vec3 &normal) : ray_(ray), t_(t), normal_(normal) {}
+  Intersection(std::shared_ptr<Ray> ray, double t, const Vec3 &normal) : ray_(std::move(ray)), t_(t), normal_(normal) {}
+
+  std::shared_ptr<Ray> MirrorReflection() {
+    if (mirror_reflected_ray_ == nullptr) {
+      mirror_reflected_ray_ = std::move(ComputerMirrorReflection());
+    }
+    return mirror_reflected_ray_;
+  }
 
   std::shared_ptr<Ray> ray() {
     return ray_;
@@ -115,10 +122,25 @@ class Intersection {
   }
 
  private:
+  std::shared_ptr<Ray> ComputerMirrorReflection() {
+    auto Ri = ray_->direction();
+    auto Rr = Ri - 2 * normal_ * (Ri.dot(normal_));
+    return std::make_shared<Ray>(ray_->Point(t_), Rr);
+  }
+
   std::shared_ptr<Ray> ray_;
+  std::shared_ptr<Ray> mirror_reflected_ray_ = nullptr;
   double t_;
   Vec3 normal_;
 };
+
+static void RotationAlignZ(const Vec3 &z_axis, Mat33 *rot) {
+  Vec3 x0(0.0, z_axis[2], -z_axis[1]);
+  Vec3 x1(-z_axis[2], 0.0, z_axis[0]);
+  rot->col(0).array() = (x0.squaredNorm() > x1.squaredNorm() ? x0 : x1).normalized();
+  rot->col(1).array() = z_axis.cross(rot->col(0)).normalized();
+  rot->col(2).array() = z_axis;
+}
 
 }
 

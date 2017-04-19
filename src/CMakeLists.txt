@@ -29,7 +29,11 @@ set(SOURCE_FILES
         scene.cc
         common.cc
         camera.cc
-        matrix_utils.cc)
+        matrix_utils.cc brdf.cc brdf.h light.h world.h)
+
+#find_package(OpenMP REQUIRED)
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 
 add_library(raytracing STATIC ${SOURCE_FILES} ${HEADER_FILES})

@@ -74,6 +74,7 @@ void Triangle::SetVertices(const Vec3 &a, const Vec3 &b, const Vec3 &c) {
   auto normal = (b - a).cross(c - a);
   auto norm = normal.norm();
   area2_ = norm;
+  area_ = norm * 0.5;
   normal_ = normal / norm;
 }
 

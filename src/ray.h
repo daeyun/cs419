@@ -5,13 +5,18 @@
 #ifndef CS419_CPP_RAY_H
 #define CS419_CPP_RAY_H
 
+#include <memory>
+
 #include "common.h"
+#include "camera.h"
 
 namespace render {
 
 class Ray {
  public:
   Ray(const Vec3 &origin, const Vec3 &direction);
+
+  static std::shared_ptr<Ray> FromCamera(double x, double y, const Camera &camera);
 
   Vec3 Point(double t) const;
 

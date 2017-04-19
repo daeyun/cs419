@@ -15,7 +15,8 @@ include_directories(../)
 add_executable(runAllTests
         intersection_test.cc
         camera_test.cc
-        triangle_test.cc)
+        triangle_test.cc
+        scene_test.cc)
 
 target_link_libraries(runAllTests gtest gtest_main)
 target_link_libraries(runAllTests raytracing)

@@ -107,7 +107,7 @@ class Triangle : public Object {
   }
 
   double area() const {
-    return area2_ * 0.5;
+    return area_;
   }
 
   const Vec3 &normal() const {
@@ -121,6 +121,7 @@ class Triangle : public Object {
   Vec3 normal_;
 
   // area times 2
+  double area_;
   double area2_;
 };
 }
