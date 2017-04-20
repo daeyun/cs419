@@ -97,7 +97,7 @@ class Intersection {
     return mirror_reflected_ray_;
   }
 
-  std::shared_ptr<Ray> ray() {
+  std::shared_ptr<Ray> ray() const {
     return ray_;
   }
 
@@ -135,10 +135,12 @@ class Intersection {
 };
 
 static void RotationAlignZ(const Vec3 &z_axis, Mat33 *rot) {
-  Vec3 x0(0.0, z_axis[2], -z_axis[1]);
-  Vec3 x1(-z_axis[2], 0.0, z_axis[0]);
-  rot->col(0).array() = (x0.squaredNorm() > x1.squaredNorm() ? x0 : x1).normalized();
-  rot->col(1).array() = z_axis.cross(rot->col(0)).normalized();
+  if (std::abs(z_axis[0]) > std::abs(z_axis[1])) {
+    rot->col(0).array() = Vec3(z_axis[2], 0, -z_axis[0]) / sqrt(z_axis[0] * z_axis[0] + z_axis[2] * z_axis[2]);
+  } else {
+    rot->col(0).array() = Vec3(0, -z_axis[2], z_axis[1]) / sqrt(z_axis[1] * z_axis[1] + z_axis[2] * z_axis[2]);
+  }
+  rot->col(1).array() = z_axis.cross(rot->col(0));
   rot->col(2).array() = z_axis;
 }
 

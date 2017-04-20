@@ -16,8 +16,16 @@ class PointLight : public Light {
  public:
   PointLight(const Vec3 &position) : position_(position) {}
 
+  Vec3 Direction(const Vec3 &origin) {
+    return (position_ - origin).normalized();
+  }
+
+  const Vec3 &position() const {
+    return position_;
+  }
+
  private:
-  Vec3 position_;
+  const Vec3 position_;
 };
 
 #endif //CS419_CPP_LIGHT_H_H

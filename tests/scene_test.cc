@@ -41,7 +41,7 @@ TEST(SceneTest, RenderDepth) {
   auto camera = std::shared_ptr<OrthographicCamera>(new OrthographicCamera({0, 0, -1}, {0, 0, 0}, {0, -1, 0}, frustum));
 
   auto world = std::make_shared<World>();
-  world->AddScene(scene);
+  world->set_scene(scene);
 
   cv::Mat image;
   Renderer renderer(viewport);

@@ -89,7 +89,7 @@ class HemisphereSampler {
       double phi = 2.0 * M_PI * x;
       double cos_phi = std::cos(phi);
       double sin_phi = std::sin(phi);
-      double cos_theta = std::pow(1 - y, inv_exp_1_);
+      double cos_theta = std::pow(y, inv_exp_1_);
       double sin_theta = std::sqrt(1 - cos_theta * cos_theta);
 
       double u = sin_theta * cos_phi;

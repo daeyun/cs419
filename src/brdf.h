@@ -16,7 +16,7 @@ class BRDF {
 
 class Lambertian : public BRDF {
  public:
-  Lambertian(const Vec3 &color, double k) : color_(color), reflection_coefficient_(k) {
+  Lambertian(const Vec3 &color) : color_(color), reflection_coefficient_(1.0) {
   }
 
   Vec3 Rho() const {

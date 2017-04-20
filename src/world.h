@@ -12,13 +12,21 @@
 namespace render {
 class World {
  public:
-  World() {}
+  World() : ambient_(0.05, 0.05, 0.05) {}
 
-  void AddScene(const std::shared_ptr<Scene> &scene) {
+  void set_scene(const std::shared_ptr<Scene> &scene) {
     scene_ = scene;
   }
 
-  void AddLight(const std::shared_ptr<Light> &light) {
+  void set_camera(const std::shared_ptr<Camera> &camera) {
+    camera_ = camera;
+  }
+
+  const std::shared_ptr<Camera> &camera() const {
+    return camera_;
+  }
+
+  void AddLight(const std::shared_ptr<PointLight> &light) {
     lights_.push_back(light);
   }
 
@@ -26,13 +34,23 @@ class World {
     return scene_;
   }
 
-  const std::vector<std::shared_ptr<Light>> &lights() const {
+  const std::vector<std::shared_ptr<PointLight>> &lights() const {
     return lights_;
+  }
+
+  const Vec3 &ambient() const {
+    return ambient_;
+  }
+
+  void set_ambient(const Vec3 &ambient) {
+    ambient_ = ambient;
   }
 
  private:
   std::shared_ptr<Scene> scene_;
-  std::vector<std::shared_ptr<Light>> lights_;
+  std::shared_ptr<Camera> camera_;
+  std::vector<std::shared_ptr<PointLight>> lights_;
+  Vec3 ambient_;
 };
 }
 

@@ -25,10 +25,11 @@ class Scene : public Object {
     bool intersects = false;
     for (const auto &object : objects_) {
       if (object->IntersectRay(ray, &current_intersection)) {
-        if (current_intersection.t() < closest_intersection.t()) {
+        if (current_intersection.t() > 1e-9
+            && current_intersection.t() < closest_intersection.t()) {
           closest_intersection = current_intersection;
+          intersects = true;
         }
-        intersects = true;
       }
     }
     if (intersects) {
