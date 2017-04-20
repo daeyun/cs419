@@ -1,4 +1,4 @@
 ## Dependencies
 
-- OpenCV
-- Google Test ([Ubuntu](https://www.eriksmistad.no/getting-started-with-google-test-on-ubuntu/))
+- [Eigen](http://eigen.tuxfamily.org/) for linear algebra
+- [Google Test](https://github.com/google/googletest) for testing
