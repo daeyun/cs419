@@ -9,35 +9,40 @@
 
 #include "object.h"
 
+#include "geom3d.h"
+
 namespace render {
 
 Sphere::Sphere(double r, const Vec3 &center)
     : center_(center) {
   set_r(r);
-  auto box = std::make_shared<BoundingBox>(center_.array() - r, center_.array() + r);
-  set_bounding_box(box);
+  set_bounding_box(BoundingBox(center_.array() - r, center_.array() + r));
 }
 
-bool Sphere::IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const {
-  auto local_xyz = ray->origin() - center_;
-  auto b = 2.0 * local_xyz.dot(ray->direction());
+bool Sphere::IntersectRay(const Ray &ray,
+                          double *t,
+                          Vec3 *hit_point,
+                          Vec3 *normal) const {
+  auto local_xyz = ray.origin() - center_;
+  auto b = 2.0 * local_xyz.dot(ray.direction());
 
-  auto cq = local_xyz.squaredNorm() - r_sq_;
+  double cq = local_xyz.squaredNorm() - r_sq_;
   auto disc = std::pow(b, 2) - 4.0 * cq;
 
   bool hit = disc > 0;
 
-  auto e = std::sqrt(disc);
-  auto t_front = -b - e;
-  auto t_back = -b + e;
-  auto t = 0.5 * ((std::abs(t_front) < std::abs(t_back)) ? t_front : t_back);
+  if (hit) {
+    auto e = std::sqrt(disc);
+    auto t_front = -b - e;
+    auto t_back = -b + e;
+    auto t_closest =
+        0.5 * ((std::abs(t_front) < std::abs(t_back)) ? t_front : t_back);
 
-  intersection->set_t(t);
-  intersection->set_ray(ray);
+    *t = t_closest;
 
-  auto hit_point = ray->Point(t);
-  intersection->set_normal((hit_point - center_).normalized());
-
+    *hit_point = ray.Point(t_closest);
+    *normal = (*hit_point - center_).normalized();
+  }
   return hit;
 }
 
@@ -45,15 +50,19 @@ void Sphere::Translate(const Vec3 &xyz) {
   center_ += xyz;
 }
 
-bool Plane::IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const {
-  auto denom = ray->direction().dot(oriented_point_.normal());
+bool Plane::IntersectRay(const Ray &ray,
+                         double *t,
+                         Vec3 *hit_point,
+                         Vec3 *normal) const {
+  auto denom = ray.direction().dot(oriented_point_.normal());
   bool hit = std::abs(denom) > 1e-7;
 
-  double t = (oriented_point_.xyz() - ray->origin()).dot(oriented_point_.normal()) / denom;
-
-  intersection->set_t(t);
-  intersection->set_ray(ray);
-  intersection->set_normal(oriented_point_.normal());
+  if (hit) {
+    *t = (oriented_point_.xyz() - ray.origin()).dot(oriented_point_.normal())
+        / denom;
+    *hit_point = ray.Point(*t);
+    *normal = oriented_point_.normal();
+  }
 
   return hit;
 }
@@ -70,10 +79,11 @@ void Triangle::SetVertices(const Vec3 &a, const Vec3 &b, const Vec3 &c) {
   a_ = a;
   b_ = b;
   c_ = c;
+  ab_ = b - a;
+  ac_ = c - a;
 
-  auto normal = (b - a).cross(c - a);
+  auto normal = (ab_).cross(ac_);
   auto norm = normal.norm();
-  area2_ = norm;
   area_ = norm * 0.5;
   normal_ = normal / norm;
 }
@@ -83,27 +93,74 @@ bool Triangle::IsPointInTriangle(const Vec3 &point) const {
   auto bp = b_ - point;
   auto cp = c_ - point;
 
-  auto area_sum2 = ap.cross(bp).norm() + ap.cross(cp).norm() + bp.cross(cp).norm();
-  return std::abs(area_sum2 - area2_) < 1e-7;
+  auto area_sum2 =
+      ap.cross(bp).norm() + ap.cross(cp).norm() + bp.cross(cp).norm();
+  return std::abs(area_sum2 - area_ * 2) < 1e-7;
 }
 
-bool Triangle::IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const {
-  double denom = ray->direction().dot(normal_);
-  if (std::abs(denom) < 1e-7) {
-    // Parallel.
+// https://en.wikipedia.org/wiki/Moller–Trumbore_intersection_algorithm
+bool Triangle::MollerTrumbore(const Ray &ray, double *out) const {
+  auto P = ray.direction().cross(ac_);
+  auto det = ab_.dot(P);
+  if (std::abs(det) < kEpsilon) {
+    return false;
+  }
+  auto inv_det = 1.0 / det;
+
+  auto T = ray.origin() - a_;
+
+  auto u = T.dot(P) * inv_det;
+  if (u < 0.0 || u > 1.0) {
     return false;
   }
 
-  double t = (a_ - ray->origin()).dot(normal_) / denom;
-  if (!IsPointInTriangle(ray->Point(t))) {
+  auto Q = T.cross(ab_);
+
+  auto v = ray.direction().dot(Q) * inv_det;
+  if (v < 0.0 || u + v > 1.0) {
     return false;
   }
 
-  intersection->set_t(t);
-  intersection->set_ray(ray);
-  intersection->set_normal(normal_);
+  auto t = ac_.dot(Q) * inv_det;
 
-  return true;
+  if (t > kEpsilon) {
+    *out = t;
+    return true;
+  }
+
+  return false;
+}
+
+bool Triangle::IntersectRay(const Ray &ray,
+                            double *t,
+                            Vec3 *hit_point,
+                            Vec3 *normal) const {
+
+  // 5.8 seconds vs 7.2 seconds.
+
+  bool hit = MollerTrumbore(ray, t);
+  if (hit) {
+    *hit_point = ray.Point(*t);
+    *normal = normal_;
+  }
+  return hit;
+
+
+
+//  double denom = ray.direction().dot(normal_);
+//
+//  // Otherwise parallel.
+//  if (std::abs(denom) > 1e-7) {
+//    double t_hit = (a_ - ray.origin()).dot(normal_) / denom;
+//    auto p = ray.Point(t_hit);
+//    if (IsPointInTriangle(p)) {
+//      *t = t_hit;
+//      *hit_point = p;
+//      *normal = normal_;
+//      return true;
+//    }
+//  }
+//  return false;
 }
 
 void Triangle::Translate(const Vec3 &xyz) {
@@ -111,5 +168,4 @@ void Triangle::Translate(const Vec3 &xyz) {
   b_ += xyz;
   c_ += xyz;
 }
-
 }

@@ -11,8 +11,10 @@
 #include <fstream>
 
 namespace render {
-MultiJittered::MultiJittered(const std::shared_ptr<Viewport> &viewport, int grid_size)
-    : PixelSampler(viewport), grid_size_(grid_size), distribution_(0, default_pool_size_ - 1) {
+MultiJittered::MultiJittered(const Viewport &viewport, int grid_size)
+    : PixelSampler(viewport),
+      grid_size_(grid_size),
+      distribution_(0, default_pool_size_ - 1) {
   for (int i = 0; i < grid_size * grid_size; ++i) {
     rook_x_.push_back(static_cast<double>(i));
   }
@@ -55,7 +57,7 @@ void MultiJittered::Sample(int row, int col, Points3d *points) {
   if (pool_.size() > 0) {
     Vec3 pixel_corner;
     pixel_corner.setZero();
-    viewport()->GetPixelCorner(row, col, &pixel_corner);
+    viewport_.GetPixelCorner(row, col, &pixel_corner);
 
     auto i = distribution_(rand_);
     *points = pool_[i].colwise() + pixel_corner;
@@ -66,13 +68,15 @@ void MultiJittered::Sample(int row, int col, Points3d *points) {
 
     Vec3 pixel_corner;
     pixel_corner.setZero();
-    viewport()->GetPixelCorner(row, col, &pixel_corner);
+    viewport_.GetPixelCorner(row, col, &pixel_corner);
 
-    pts.row(0) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_x_.data(), num_samples_per_pixel_);
-    pts.row(1) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_y_.data(), num_samples_per_pixel_);
+    pts.row(0) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(
+        rook_x_.data(), num_samples_per_pixel_);
+    pts.row(1) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(
+        rook_y_.data(), num_samples_per_pixel_);
     pts.row(2).setZero();
 
-    double scale = viewport()->s() / num_samples_per_pixel_;
+    double scale = viewport_.s() / num_samples_per_pixel_;
 
     Vec2 rand(2, pts.cols());
     rand.setRandom();
@@ -100,15 +104,19 @@ void MultiJittered::SetRookY() {
 }
 
 void MultiJittered::GenerateSamplePool(int pool_size) {
-  double scale = viewport()->s() / num_samples_per_pixel_;
+  double scale = viewport_.s() / num_samples_per_pixel_;
 
   for (int i = 0; i < pool_size; ++i) {
     ShuffleRookCoords();
 
     Points3d pts(3, num_samples_per_pixel_);
 
-    pts.row(0) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_x_.data(), num_samples_per_pixel_);
-    pts.row(1) = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_y_.data(), num_samples_per_pixel_);
+    pts.row(0) =
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_x_.data(),
+                                                             num_samples_per_pixel_);
+    pts.row(1) =
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>(rook_y_.data(),
+                                                             num_samples_per_pixel_);
     pts.row(2).setZero();
 
     Vec2 rand(2, pts.cols());

@@ -14,27 +14,27 @@ class World {
  public:
   World() : ambient_(0.05, 0.05, 0.05) {}
 
-  void set_scene(const std::shared_ptr<Scene> &scene) {
-    scene_ = scene;
+  void set_scene(std::unique_ptr<Scene> scene) {
+    scene_ = std::move(scene);
   }
 
-  void set_camera(const std::shared_ptr<Camera> &camera) {
-    camera_ = camera;
+  void set_camera(std::unique_ptr<Camera> camera) {
+    camera_ = std::move(camera);
   }
 
-  const std::shared_ptr<Camera> &camera() const {
-    return camera_;
+  const Camera *camera() const {
+    return camera_.get();
   }
 
-  void AddLight(const std::shared_ptr<PointLight> &light) {
-    lights_.push_back(light);
+  void AddLight(std::unique_ptr<PointLight> light) {
+    lights_.push_back(std::move(light));
   }
 
-  const std::shared_ptr<Scene> &scene() const {
-    return scene_;
+  const Scene *scene() const {
+    return scene_.get();
   }
 
-  const std::vector<std::shared_ptr<PointLight>> &lights() const {
+  const std::vector<std::unique_ptr<PointLight>> &lights() const {
     return lights_;
   }
 
@@ -47,9 +47,9 @@ class World {
   }
 
  private:
-  std::shared_ptr<Scene> scene_;
-  std::shared_ptr<Camera> camera_;
-  std::vector<std::shared_ptr<PointLight>> lights_;
+  std::unique_ptr<Scene> scene_;
+  std::unique_ptr<Camera> camera_;
+  std::vector<std::unique_ptr<PointLight>> lights_;
   Vec3 ambient_;
 };
 }

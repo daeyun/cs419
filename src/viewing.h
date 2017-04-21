@@ -6,7 +6,6 @@
 #define CS419_CPP_VIEWING_H
 
 #include "common.h"
-#include "geom3d.h"
 
 namespace render {
 

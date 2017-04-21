@@ -4,8 +4,6 @@
 
 #include "geom3d.h"
 
-#include "common.h"
-
 namespace render {
 
 BoundingBox::BoundingBox(const Vec3 &corner1, const Vec3 &corner2) {
@@ -25,7 +23,8 @@ BoundingBox::BoundingBox(const Vec3 &corner1, const Vec3 &corner2) {
 bool BoundingBox::IsOverlapping(const BoundingBox &other) const {
   const auto &other_min = other.min();
   const auto &other_max = other.max();
-  return (max_.array() > other_min.array()).all() && (min_.array() < other_max.array()).all();
+  return (max_.array() > other_min.array()).all()
+      && (min_.array() < other_max.array()).all();
 }
 
 // `t_entry` is set to the entry displacement if the ray intersects the bounding box.
@@ -43,5 +42,17 @@ bool BoundingBox::RayEntry(const Ray &ray, double *t_entry) {
   }
   return false;
 }
+
+bool RayTriangleIntersection(const Vec3 &a_,  // Triangle vertices
+                             const Vec3 &b_,
+                             const Vec3 &c_,
+                             const Vec3 &O,  //Ray origin
+                             const Vec3 &D,  //Ray direction
+                             double *out) {
+  //Find vectors for two edges sharing V1
+  auto ab_ = b_ - a_;
+  auto ac_ = c_ - a_;
+}
+
 }
 

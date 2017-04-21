@@ -10,7 +10,6 @@
 #include <fstream>
 #include <ctime>
 #include <iostream>
-#include <opencv2/core/core.hpp>
 
 #include "common.h"
 #include "scene.h"
@@ -24,26 +23,30 @@ namespace render {
 
 class Renderer {
  public:
-  Renderer(std::shared_ptr<render::Viewport> viewport) : viewport_(viewport) {
+  Renderer(const Viewport &viewport) : viewport_(viewport) {
     UseMultiJitteredSampling(3);
   }
 
   void UseMultiJitteredSampling(int grid_size = 3) {
-    sampler_ = std::shared_ptr<render::MultiJittered>(new render::MultiJittered(viewport_, grid_size));
+    sampler_ = std::make_unique<render::MultiJittered>(viewport_, grid_size);
   }
 
   // `primary_ray_handler` is a function that computes the RGB values given an intersection point of a
   // primary ray. The renderer will take the average of those values to determine the final color of the pixel.
-  void RenderScene(std::shared_ptr<World> world,
-                   std::shared_ptr<Camera> camera,
-                   std::function<void(const World &, const Intersection &, Vec3 *rgb_out)> primary_ray_handler,
+  void RenderScene(const World &world,
+                   std::function<void(const World &,
+                                      const Intersection &,
+                                      Vec3 *rgb_out)> primary_ray_handler,
                    cv::Mat *image) {
-    *image = cv::Mat(cv::Size(viewport_->w(), viewport_->h()), CV_64FC4, cv::Scalar(0.0, 0.0, 0.0, 1.0));
+    *image = cv::Mat(cv::Size(viewport_.w(), viewport_.h()),
+                     CV_64FC4,
+                     cv::Scalar(0.0, 0.0, 0.0, 1.0));
 
-    const Scene &scene = *world->scene();
-#pragma omp parallel for
-    for (int y = 0; y < viewport_->h(); ++y) {
-      for (int x = 0; x < viewport_->w(); ++x) {
+    const Scene *scene = world.scene();
+    const Camera *camera = world.camera();
+#pragma omp parallel for if(USE_OMP)
+    for (int y = 0; y < viewport_.h(); ++y) {
+      for (int x = 0; x < viewport_.w(); ++x) {
         auto &pixel = image->at<cv::Vec4d>(y, x);
         Points3d points;
         int hit_count = 0;
@@ -57,12 +60,18 @@ class Renderer {
 
         for (int i = 0; i < num_points; ++i) {
           Vec3 p = points.col(i);
-          auto ray = Ray::FromCamera(p[0], p[1], *camera);
-          render::Intersection intersection(ray);
-          bool hit = scene.IntersectRay(ray, &intersection);
+          Intersection
+              intersection(std::move(Ray::FromCamera(p[0], p[1], *camera)));
+          bool hit = scene->IntersectRay(&intersection);
           if (hit) {
+            auto normal = intersection.normal();
+            // Render both sides. Flip any normals away from camera.
+            if (normal.dot(camera->viewing_direction()) > 0.01) {
+              intersection.set_normal(-normal);
+            }
+
             Vec3 rgb_sample;
-            primary_ray_handler(*world, intersection, &rgb_sample);
+            primary_ray_handler(world, intersection, &rgb_sample);
             rgb += rgb_sample;
             hit_count++;
           }
@@ -86,8 +95,8 @@ class Renderer {
   }
 
  private:
-  std::shared_ptr<render::Viewport> viewport_;
-  std::shared_ptr<render::PixelSampler> sampler_;
+  Viewport viewport_;
+  std::unique_ptr<PixelSampler> sampler_;
 };
 }
 

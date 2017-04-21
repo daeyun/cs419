@@ -16,7 +16,9 @@ class Ray {
  public:
   Ray(const Vec3 &origin, const Vec3 &direction);
 
-  static std::shared_ptr<Ray> FromCamera(double x, double y, const Camera &camera);
+  static std::unique_ptr<Ray> FromCamera(double x,
+                                         double y,
+                                         const Camera &camera);
 
   Vec3 Point(double t) const;
 

@@ -12,30 +12,43 @@
 
 namespace render {
 
+class Viewport;
+
+static void RotationAlignZ(const Vec3 &z_axis, Vec3 *x, Vec3 *y) {
+  if (std::abs(z_axis[0]) > std::abs(z_axis[1])) {
+    *x = Vec3(z_axis[2], 0, -z_axis[0])
+        / sqrt(z_axis[0] * z_axis[0] + z_axis[2] * z_axis[2]);
+  } else {
+    *x = Vec3(0, -z_axis[2], z_axis[1])
+        / sqrt(z_axis[1] * z_axis[1] + z_axis[2] * z_axis[2]);
+  }
+  *y = z_axis.cross(*x);
+}
+
 class PixelSampler {
  public:
-  PixelSampler(std::shared_ptr<Viewport> viewport) : viewport_(viewport) {}
+  PixelSampler(const Viewport &viewport) : viewport_(viewport) {}
 
   virtual void Sample(int row, int col, Points3d *points) = 0;
 
-  std::shared_ptr<Viewport> viewport() { return viewport_; };
+  const Viewport &viewport() { return viewport_; };
 
  protected:
-  std::shared_ptr<Viewport> viewport_;
+  Viewport viewport_;
 
 };
 
 class MultiJittered : public PixelSampler {
  public:
-  MultiJittered(const std::shared_ptr<Viewport> &viewport, int grid_size);
+  MultiJittered(const Viewport &viewport, int grid_size);
 
-  // Shuffles the x, y indices of a grid in a way that satisfies the rook condition.
+  // Shuffles the x, y indices of a grid while satisfying the rook condition.
   void ShuffleRookCoords();
 
   // Generates 3D points that correspond to a pixel at (y, x).
   void Sample(int row, int col, Points3d *points);
 
-  const std::shared_ptr<Viewport> &viewport() const {
+  const Viewport &viewport() const {
     return viewport_;
   }
 
@@ -76,7 +89,9 @@ class MultiJittered : public PixelSampler {
 class HemisphereSampler {
  public:
   HemisphereSampler(double exp, int pool_size = 20000)
-      : exp_(exp), pool_size_(pool_size), hemisphere_sample_pool_(3, pool_size), int_distribution_(0, pool_size - 1) {
+      : exp_(exp),
+        pool_size_(pool_size),
+        hemisphere_sample_pool_(3, pool_size) {
     exp_1_ = exp_ + 1.0;
     inv_exp_1_ = 1.0 / exp_1_;
 
@@ -101,37 +116,53 @@ class HemisphereSampler {
       hemisphere_sample_pool_(2, i) = w;
 
       double pdf = (exp_1_) * pow(cos_theta, exp) * kOneOverTwoPi;
+      CHECK(pdf > 0);
       pdf_pool_.push_back(pdf);
     }
   }
 
-  void Sample(Vec3 *sampled, double *pdf) {
-    int ind = int_distribution_(rand_);
-    *sampled = hemisphere_sample_pool_.col(ind);
+  void Sample(Vec3 *sampled, double *pdf) const {
+    int ind = std::uniform_int_distribution<int>{0, pool_size_ - 1}(rand_);
+
+    ChooseSampleFromPool(ind, sampled);
     *pdf = pdf_pool_[ind];
   }
 
-  void Sample(const Vec3 &n, Vec3 *sampled, double *pdf) {
-    Sample(sampled, pdf);
-    Mat33 rot;
-    RotationAlignZ(n, &rot);
-    *sampled = rot * (*sampled);
+  void Sample(const Vec3 &n, Vec3 *sampled, double *pdf) const {
+    Vec3 point;
+    Sample(&point, pdf);
+    Vec3 x, y;
+    RotationAlignZ(n, &x, &y);
+    *sampled = x * point(0) + y * point(1) + n * point(2);
   }
 
-  void SampleMany(const Vec3 &n, int num, Points3d *sampled, Vec *pdf) {
+  void SampleMany(const Vec3 &n, int num, Points3d *sampled, Vec *pdf) const {
     sampled->resize(3, num);
-    pdf->resize(1, num);
+    pdf->resize(num, 1);
+    Points3d points(3, num);
+
+    auto dist = std::uniform_int_distribution<int>{0, pool_size_ - 1};
+
     // TODO(daeyun): avoid repetition.
     for (int i = 0; i < num; ++i) {
-      Vec3 v;
-      double pdf_i;
-      Sample(&v, &pdf_i);
-      sampled->col(i).array() = v;
-      (*pdf)(i) = pdf_i;
+      const int ind = dist(rand_);
+      Vec3 p;
+      ChooseSampleFromPool(ind, &p);
+      points.col(i).array() = p;
+      (*pdf)(i) = pdf_pool_[ind];
     }
-    Mat33 rot;
-    RotationAlignZ(n, &rot);
-    *sampled = rot * (*sampled);
+
+    Vec3 x, y;
+    RotationAlignZ(n, &x, &y);
+    *sampled = x * points.row(0) + y * points.row(1) + n * points.row(2);
+  }
+
+  void ChooseSampleFromPool(int i, Vec3 *sample) const {
+    *sample = const_cast<Points3d *>(&hemisphere_sample_pool_)->col(i).eval();
+  }
+
+  void set_hemisphere_sample_pool(const Points3d &hemisphere_sample_pool) {
+    hemisphere_sample_pool_ = hemisphere_sample_pool;
   }
 
  private:
@@ -141,8 +172,7 @@ class HemisphereSampler {
   const int pool_size_;
   Points3d hemisphere_sample_pool_;
   std::vector<double> pdf_pool_;
-  std::default_random_engine rand_;
-  std::uniform_int_distribution<> int_distribution_;
+  mutable std::default_random_engine rand_;
 };
 
 }

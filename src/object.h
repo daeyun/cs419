@@ -8,48 +8,57 @@
 #include "common.h"
 #include "ray.h"
 #include "geom3d.h"
+#include "brdf.h"
 
 namespace render {
 
+class BRDF;
+
+class Intersection;
+
 struct Material {
-  Vec3 rgb;
+  std::unique_ptr<BRDF> brdf;
 };
 
 class Object {
  public:
   Object() {}
 
-  ~Object() = default;
-
-  virtual bool IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const = 0;
+  virtual bool IntersectRay(const Ray &ray,
+                            double *t,
+                            Vec3 *hit_point,
+                            Vec3 *normal) const = 0;
   virtual void Translate(const Vec3 &xyz) = 0;
 
-  std::shared_ptr<BoundingBox> bounding_box() {
+  const BoundingBox &bounding_box() const {
     return bounding_box_;
   }
 
-  void set_bounding_box(std::shared_ptr<BoundingBox> box) {
+  void set_bounding_box(const BoundingBox &box) {
     bounding_box_ = box;
   }
 
-  std::shared_ptr<Material> material() const {
+  const Material *material() const {
     return material_;
   }
 
-  void set_material(std::shared_ptr<Material> material) {
+  void set_material(const Material *material) {
     material_ = material;
   }
 
  private:
-  std::shared_ptr<BoundingBox> bounding_box_;
-  std::shared_ptr<Material> material_;
+  BoundingBox bounding_box_;
+  const Material *material_ = nullptr;
 };
 
 class Sphere : public Object {
  public:
   Sphere(double r, const Vec3 &center);
 
-  virtual bool IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const override;
+  virtual bool IntersectRay(const Ray &ray,
+                            double *t,
+                            Vec3 *hit_point,
+                            Vec3 *normal) const override;
   virtual void Translate(const Vec3 &xyz) override;
 
   void set_r(double r) {
@@ -67,7 +76,10 @@ class Plane : public Object {
  public:
   Plane(const OrientedPoint &point) : oriented_point_(point) {}
 
-  virtual bool IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const override;
+  virtual bool IntersectRay(const Ray &ray,
+                            double *t,
+                            Vec3 *hit_point,
+                            Vec3 *normal) const override;
 
   const OrientedPoint &oriented_point() const {
     return oriented_point_;
@@ -87,12 +99,17 @@ class Triangle : public Object {
  public:
   Triangle(const Vec3 &a, const Vec3 &b, const Vec3 &c);
 
-  virtual bool IntersectRay(const std::shared_ptr<Ray> &ray, Intersection *intersection) const override;
+  virtual bool IntersectRay(const Ray &ray,
+                            double *t,
+                            Vec3 *hit_point,
+                            Vec3 *normal) const override;
   virtual void Translate(const Vec3 &xyz) override;
 
   void SetVertices(const Vec3 &a, const Vec3 &b, const Vec3 &c);
 
   bool IsPointInTriangle(const Vec3 &point) const;
+
+  bool MollerTrumbore(const Ray &ray, double *out) const;
 
   const Vec3 &a() const {
     return a_;
@@ -119,10 +136,88 @@ class Triangle : public Object {
   Vec3 b_;
   Vec3 c_;
   Vec3 normal_;
+  Vec3 ab_;
+  Vec3 ac_;
 
-  // area times 2
   double area_;
-  double area2_;
+};
+
+class Intersection {
+ public:
+  Intersection(std::unique_ptr<Ray> ray) : ray_(std::move(ray)) {}
+
+  Intersection(std::unique_ptr<Ray> ray, double t, const Vec3 &normal) : ray_(
+      std::move(ray)), t_(t), normal_(normal) {}
+
+  Intersection(std::unique_ptr<Ray> ray,
+               double t,
+               const Vec3 &normal,
+               const Material *material) :
+      ray_(std::move(ray)),
+      t_(t),
+      normal_(normal),
+      material_(material) {}
+
+  const Ray *MirrorReflection() {
+    if (mirror_reflected_ray_ == nullptr) {
+      mirror_reflected_ray_ = std::move(ComputerMirrorReflection());
+    }
+    return mirror_reflected_ray_.get();
+  }
+
+  const Ray *ray() const {
+    return ray_.get();
+  }
+
+  void set_ray(std::unique_ptr<Ray> ray) {
+    ray_ = std::move(ray);
+  }
+
+  double t() const {
+    return t_;
+  }
+
+  void set_t(double t) {
+    t_ = t;
+  }
+
+  const Vec3 &normal() const {
+    return normal_;
+  }
+
+  void set_normal(const Vec3 &normal) {
+    normal_ = normal;
+  }
+
+  const Material *material() const {
+    return material_;
+  }
+
+  void set_material(const Material *mat) {
+    material_ = mat;
+  }
+
+  const Vec3 &hit_point() const {
+    return hit_point_;
+  }
+
+  void set_hit_point(const Vec3 &hit_point) {
+    hit_point_ = hit_point;
+  }
+
+ private:
+  std::unique_ptr<Ray> ComputerMirrorReflection() {
+    auto Ri = ray_->direction();
+    auto Rr = Ri - 2 * normal_ * (Ri.dot(normal_));
+    return std::make_unique<Ray>(ray_->Point(t_), Rr);
+  }
+
+  std::unique_ptr<Ray> ray_;
+  std::unique_ptr<Ray> mirror_reflected_ray_ = nullptr;
+  const Material *material_;
+  double t_;
+  Vec3 normal_;
+  Vec3 hit_point_;
 };
 }
 

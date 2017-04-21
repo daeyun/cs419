@@ -30,5 +30,12 @@ using Points2i = Eigen::Matrix<int, 2, Eigen::Dynamic>;
 
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
 constexpr double kOneOverTwoPi = M_1_PI * 0.5;
+constexpr double kEpsilon = 1e-8;
+
+#ifndef NDEBUG
+#define USE_OMP 0
+#else
+#define USE_OMP 1
+#endif
 
 #endif //CS419_CPP_COMMON_H

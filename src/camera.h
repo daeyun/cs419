@@ -18,8 +18,14 @@ struct FrustumParams {
 
 class Camera {
  public:
-  Camera(const Vec3 &camera_position, const Vec3 &lookat_position, const Vec3 &up, const FrustumParams &frustum)
-      : position_(camera_position), lookat_position_(lookat_position), up_(up), frustum_(frustum) {
+  Camera(const Vec3 &camera_position,
+         const Vec3 &lookat_position,
+         const Vec3 &up,
+         const FrustumParams &frustum)
+      : position_(camera_position),
+        lookat_position_(lookat_position),
+        up_(up),
+        frustum_(frustum) {
     auto viewing_direction = (lookat_position - camera_position).normalized();
     auto right = viewing_direction.cross(up).normalized();
     auto up_vector = right.cross(viewing_direction);
@@ -44,8 +50,11 @@ class Camera {
     view_mat_(3, 2) = 0;
     view_mat_(3, 3) = 1;
 
-    view_mat_inv_.topLeftCorner<3, 3>() = view_mat_.topLeftCorner<3, 3>().transpose();
+    view_mat_inv_.topLeftCorner<3, 3>() =
+        view_mat_.topLeftCorner<3, 3>().transpose();
     view_mat_inv_.block<3, 1>(0, 3) = camera_position;
+
+    viewing_direction_ = (lookat_position_ - position_).normalized();
   }
 
   void WorldToCam(const Vec3 &xyz, Vec3 *out) const {
@@ -108,6 +117,10 @@ class Camera {
     return lookat_position_;
   }
 
+  const Vec3 &viewing_direction() const {
+    return viewing_direction_;
+  }
+
   virtual const Mat44 &projection_mat() const = 0;
   virtual const Mat44 &projection_mat_inv() const = 0;
 
@@ -115,6 +128,7 @@ class Camera {
   Vec3 position_;
   Vec3 lookat_position_;
   Vec3 up_;
+  Vec3 viewing_direction_;
   Mat44 view_mat_;
   Mat44 view_mat_inv_;
   FrustumParams frustum_;
